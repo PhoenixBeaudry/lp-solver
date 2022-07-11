@@ -1,6 +1,6 @@
 import numpy
 import sys
-debug = False
+debug = True
 
 
 # Takes in default standard form LP as a list and outputs the same LP as its corresponding dictionary matrix
@@ -11,8 +11,6 @@ def standard_form_to_dictionary(lp):
         basics.append([coeffs[-1]] + [-1*i for i in coeffs[:-1]])
     dictionary = numpy.array(non_basic + basics)
     return dictionary
-
-
 
 
 
@@ -28,8 +26,21 @@ def main():
     # Convert LP into dictionary matrix form
     dictionary = standard_form_to_dictionary(lp)
 
+    dual = -1 * dictionary.transpose()
+
     if (debug):
+        print("Primal Dictionary:")
         print(dictionary)
+        print("Dual Dictionary:")
+        print(dual)
+
+    # Check primal-dual feasibility
+    if (numpy.all(dictionary[:,0] >= 0)):
+        print("Dictionary is Primal Feasible")
+    if (numpy.all(dictionary[0] <= 0)):
+        print("Dictionary is Dual Feasible")
+
+
 
 
 if __name__ == "__main__":
