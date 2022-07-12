@@ -13,6 +13,15 @@ def standard_form_to_dictionary(lp):
     return dictionary
 
 
+def determine_pivot_index(dictionary):
+    # Largest Coefficient
+    return numpy.argmax(dictionary[0])
+
+def pivot(dictionary, entering_index):
+    # Check Pivot Ratios (First Column over Index Column)
+    # Pivot that Row (Calculate Leaving Variable = 0)
+    # Substitute that new variable into all other basis rows
+    return
 
 def main():
     # Read in LP from stdin
