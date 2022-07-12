@@ -3,29 +3,28 @@ import sys
 debug = True
 
 
-# Takes in default standard form LP as a list and outputs the same LP as its corresponding dictionary matrix
-def standard_form_to_dictionary(lp):
-    non_basic = [[0] + lp[0]]
-    basics = []
+# Takes in default standard form LP as a list and outputs the same LP as its corresponding A, b, and c vectors
+def standard_form_to_eq(lp):
+    A = []
+    b = []
     for coeffs in lp[1:]:
-        basics.append([coeffs[-1]] + [-1*i for i in coeffs[:-1]])
-    dictionary = numpy.array(non_basic + basics)
-    return dictionary
+        A.append(coeffs[:-1])
+        b.append(coeffs[-1])
+    A = numpy.array(A)
+    c = lp[0] + [0]*len(b)
+    #Add the identity basis (slack variables)
+    A = numpy.concatenate((A,numpy.identity(A.shape[0])), axis=1)
+    return (A,b,c)
 
 def determine_pivot_index(dictionary):
     # Largest Coefficient
     return numpy.argmax(dictionary[0])
 
-def pivot(dictionary, entering_index):
-    # Check Pivot Ratios (First Column over entering_index Column)
-    # Pivot that Row (Calculate Leaving Variable = 0)
-    # Substitute that new variable into all other basis rows
+
+def primal_simplex(A,b,c,B,N):
     return
 
-def primal_simplex(dictionary):
-    return
-
-def dual_simplex(dictionary):
+def dual_simplex():
     return
 
 
@@ -39,21 +38,12 @@ def main():
         lp.append(coeff_line)
 
     # Convert LP into dictionary matrix form
-    dictionary = standard_form_to_dictionary(lp)
+    (A,b,c) = standard_form_to_eq(lp)
 
-    dual = -1 * dictionary.transpose()
-
-    if (debug):
-        print("Primal Dictionary:")
-        print(dictionary)
-        print("Dual Dictionary:")
-        print(dual)
-
-    # Check primal-dual feasibility
-    if (numpy.all(dictionary[:,0] >= 0)):
-        print("Dictionary is Primal Feasible")
-    if (numpy.all(dictionary[0] <= 0)):
-        print("Dictionary is Dual Feasible")
+    if(debug):
+        print(A)
+        print(b)
+        print(c)
 
 
 
