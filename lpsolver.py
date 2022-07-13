@@ -1,7 +1,7 @@
 from operator import matmul
 import numpy
 import sys
-debug = False
+debug = True
 
 
 # Takes in default standard form LP as a list and outputs the same LP as its corresponding A, b, and c vectors
@@ -17,6 +17,8 @@ def standard_form_to_eq(lp):
     c = lp[0] + [0]*len(b)
     #Add the identity basis (slack variables)
     A = numpy.concatenate((A,numpy.identity(A.shape[0])), axis=1)
+    b = numpy.array(b)
+    c = numpy.array(c)
     return (A,b,c,B,N)
 
 def determine_pivot_index(dictionary):
@@ -25,29 +27,15 @@ def determine_pivot_index(dictionary):
 
 
 def primal_simplex(A,b,c,B,N):
-    # First let's make our basis matrix A_b (columns of A corresponding to our basis variables)
-    A_B = A[:, B[0]]
-    for basis_index in B[1:]:
-        A_column = A[:, basis_index]
-        A_B = numpy.column_stack((A_B, A_column))
-
-    # Non basis matrix
-    A_N = A[:, N[0]]
-    for non_basis_index in N[1:]:
-        A_column = A[:, basis_index]
-        A_N = numpy.column_stack((A_N, A_column))
-    
-    # Take its inverse (TODO CHANGE LATER TO NOT USE INVERSE)
-    A_B_i = numpy.linalg.inv(A_B)
-
-    # Compute initial value of x
-    x_b = numpy.matmul(A_B_i, b)
-    x_n = numpy.zeros(len(N))
-
+    iteration = 1
     while True:
         # Compute our required variables based on B and N
+        if debug: print("Iteration: ", iteration)
 
-        # Basis Matrix
+        if debug: print("Current Basis: ", B)
+        if debug: print("Current Non Basis: ", N)
+
+        # First let's make our basis matrix A_b (columns of A corresponding to our basis variables)
         A_B = A[:, B[0]]
         for basis_index in B[1:]:
             A_column = A[:, basis_index]
@@ -56,27 +44,69 @@ def primal_simplex(A,b,c,B,N):
         # Non basis matrix
         A_N = A[:, N[0]]
         for non_basis_index in N[1:]:
-            A_column = A[:, basis_index]
+            A_column = A[:, non_basis_index]
             A_N = numpy.column_stack((A_N, A_column))
+        
+        # Take its inverse (TODO CHANGE LATER TO NOT USE INVERSE)
+        A_B_i = numpy.linalg.inv(A_B)
+
+        # Compute value of x
+        x_B = numpy.dot(A_B_i, b)
+        x_N = numpy.zeros(len(N))
 
         #Objective Vectors
         c_B = numpy.array(c)[B]
         c_N = numpy.array(c)[N]
-        z_B = numpy.zeros(len(x_b))
-        z_N = numpy.matmul(numpy.matmul(A_B_i, A_N).transpose(), c_B) - c_N
+
+        z_B = numpy.zeros(len(x_B))
+        z_N = numpy.dot(numpy.dot(A_B_i, A_N).transpose(), c_B) - c_N
 
         #Check optimality
         if(numpy.all(z_N >= 0)):
-            print("OPTIMAL!")
-            print(z_N)
-            #TODO Compute Eta*
+            final = numpy.dot(numpy.dot(c_B, A_B_i), b)
+            if debug: print("OPTIMAL!")
+            if debug: print(final)
             return
 
         # Choose pivot variable:
-        
+        # For Blands rule: Sort N lowest to highest, then test in order to see if coefficient is right sign
+        z_N_index = 0
+        entering_index = 0
+        for index in N:
+            entering_coefficient = z_N[z_N_index]
+            if (entering_coefficient < 0):
+                entering_index = index
+                break
+            z_N_index += 1
 
+        # Choose Leaving Variable 
+        delta_x_B = numpy.dot(A_B_i, A[:, entering_index])
+        delta_x_N = numpy.zeros(len(N))
+
+        # Check if delta_x_B <= 0, if it is, then the LP is unbounded.
+        if(numpy.all(delta_x_B <= 0)):
+            print("UNBOUNDED LP")
+            return
+
+        # Calculate the ratio of x_B / delta_x_B
+        ratios = numpy.divide(x_B, delta_x_B)
+        leaving_index = numpy.where(ratios > 0, ratios, numpy.inf).argmin() # smallest nonzero value
+
+        leaving_index = B[leaving_index]
+        # Updating B and N
+        if debug: print("Entering Variable: ", entering_index)
+        if debug: print("Leaving Variable: ", leaving_index)
+
+        B.remove(leaving_index)
+        B.append(entering_index)
+        B.sort()
+
+        N.remove(entering_index)
+        N.append(leaving_index)
+        N.sort()
         
-    
+        iteration += 1
+
     return
 
 def dual_simplex():
@@ -94,13 +124,6 @@ def main():
 
     # Convert LP into dictionary matrix form
     (A,b,c,B,N) = standard_form_to_eq(lp)
-
-    if(debug):
-        print(A)
-        print(b)
-        print(c)
-        print(B)
-        print(N)
         
 
     #Initial Basis and N
