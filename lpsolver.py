@@ -1,6 +1,6 @@
-from operator import matmul
-import numpy
 import sys
+import numpy
+from fractions import Fraction
 debug = True
 
 
@@ -30,6 +30,7 @@ def primal_simplex(A,b,c,B,N):
     if debug: print("Starting PrimalSimplex")
     iteration = 1
     while True:
+        #if(iteration == 5): break
         # Compute our required variables based on B and N
         if debug: print("Iteration: ", iteration)
 
@@ -70,6 +71,10 @@ def primal_simplex(A,b,c,B,N):
             return (B,N)
 
         # Choose pivot variable:
+        # Largest coefficient
+        #entering_index = N[numpy.argmin(z_N)]
+        #entering_index = numpy.amin(entering_index)
+        
         # For Blands rule: Sort N lowest to highest, then test in order to see if coefficient is right sign
         z_N_index = 0
         entering_index = 0
@@ -79,6 +84,8 @@ def primal_simplex(A,b,c,B,N):
                 entering_index = index
                 break
             z_N_index += 1
+        
+        
 
         # Choose Leaving Variable 
         delta_x_B = numpy.dot(A_B_i, A[:, entering_index])
@@ -91,6 +98,7 @@ def primal_simplex(A,b,c,B,N):
 
         # Calculate the ratio of x_B / delta_x_B
         ratios = numpy.divide(x_B, delta_x_B)
+        print(ratios)
         leaving_index = numpy.where(ratios > 0, ratios, numpy.inf).argmin() # smallest nonzero value
 
         leaving_index = B[leaving_index]
@@ -144,6 +152,7 @@ def dual_simplex(A,b,c,B,N):
 
         z_B = numpy.zeros(len(x_B))
         z_N = numpy.dot(numpy.dot(A_B_i, A_N).transpose(), c_B) - c_N
+        print(z_N)
 
         if(numpy.all(z_N < 0)):
             print("NOT DUAL FEASIBLE")
@@ -156,7 +165,7 @@ def dual_simplex(A,b,c,B,N):
             if debug: print(final)
             return (B,N)
 
-        # Choose pivot variable:
+        # Choose leaving pivot variable:
         # For Blands rule: Sort B lowest to highest, then test in order to see if coefficient is right sign
         x_B_index = 0
         leaving_index = 0
@@ -168,30 +177,36 @@ def dual_simplex(A,b,c,B,N):
             x_B_index += 1
 
         # Choose Entering Variable
-        # TODO MUST FIND U VECTOR
+        # Find U vector
         u = numpy.zeros(len(z_B))
         index = 0
         for basic_index in B:
-            if(index==basic_index):
+            if(basic_index==leaving_index):
                 u[index] = 1
             else:
                 u[index] = 0
-        delta_z_N = -numpy.dot(numpy.dot(A_N.transpose(), numpy.linalg.inv(A_B.transpose())), u)
+            index += 1
+
+        # Compute delta_z_N and delta_z_B
+        v = numpy.linalg.solve(A_B.transpose(), u)
+        delta_z_N = -numpy.dot(A_N.transpose(), v)
         delta_z_B = numpy.zeros(len(B))
-        print(u)
-        print(delta_z_N)
-        return
+
+        print("z_N: ", z_N)
+        print("delta_z_N: ", delta_z_N)
+
         # Check if delta_z_B <= 0, if it is, then the LP is unbounded.
-        '''
-        if(numpy.all(delta_z_N >= 0)):
-            print("UNBOUNDED LP")
+        if(numpy.all(delta_z_N <= 0)):
+            print("LP is infeasible")
             return
-        '''
+
+        
+        
         
 
-        # Calculate the ratio of x_B / delta_x_B
+        # Calculate the ratio of z_N and delta_z_N
         ratios = numpy.divide(z_N, delta_z_N)
-        entering_index = numpy.where(ratios > 0, ratios, numpy.inf).argmin() # smallest nonzero value
+        entering_index = numpy.where(ratios < 0, ratios, numpy.inf).argmin() # smallest nonzero value
 
         entering_index = N[entering_index]
         # Updating B and N
@@ -222,13 +237,24 @@ def main():
     # Convert LP into dictionary matrix form
     (A,b,c,B,N) = standard_form_to_eq(lp)
 
+    if debug: print("Current LP: ")
+    if debug: print("A: ")
+    if debug: print(A)
+    if debug: print("b: ")
+    if debug: print(b)
+    if debug: print("c: ")
+    if debug: print(c)
+
     # LP is primal feasible
     if(numpy.all(b >= 0)):
+        if debug: print("LP is Primal Feasible")
         primal_simplex(A,b,c,B,N)
     elif(numpy.all(c <= 0)):
+        if debug: print("LP is Dual Feasible")
         dual_simplex(A,b,c,B,N)
     else:
-        (B,N) = dual_simplex(A,b,numpy.zeros(len(c)),B,N)
+        if debug: print("LP is neither Primal nor Dual Feasible")
+        (B,N) = dual_simplex(A,b,numpy.full(len(c), -1),B,N)
         primal_simplex(A,b,c,B,N)
 
 
