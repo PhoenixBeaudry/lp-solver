@@ -98,8 +98,14 @@ def primal_simplex(A,b,c,B,N):
 
         # Calculate the ratio of x_B / delta_x_B
         ratios = numpy.divide(x_B, delta_x_B)
-        print(ratios)
+        
         leaving_index = numpy.where(ratios > 0, ratios, numpy.inf).argmin() # smallest nonzero value
+        
+        # Check if we only have negative values and zero
+        if (numpy.all(ratios <= 0)):
+            if(numpy.any(ratios==0)):
+                leaving_index = numpy.asscalar(numpy.argwhere(ratios == 0))
+        
 
         leaving_index = B[leaving_index]
         # Updating B and N
