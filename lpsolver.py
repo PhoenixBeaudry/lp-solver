@@ -1,7 +1,8 @@
 import sys
 import numpy
 from fractions import Fraction
-debug = True
+numpy.seterr(divide='ignore')
+debug = False
 
 
 # Takes in default standard form LP as a list and outputs the same LP as its corresponding A, b, and c vectors
@@ -30,7 +31,7 @@ def primal_simplex(A,b,c,B,N):
     if debug: print("Starting PrimalSimplex")
     iteration = 1
     while True:
-        #if(iteration == 5): break
+        if debug and iteration == 20: return
         # Compute our required variables based on B and N
         if debug: print("Iteration: ", iteration)
 
@@ -65,10 +66,16 @@ def primal_simplex(A,b,c,B,N):
 
         #Check optimality
         if(numpy.all(z_N >= 0)):
+            out = "O"
+            #TODO FORMAT OUTPUT
+            
             final = numpy.dot(numpy.dot(c_B, A_B_i), b)
-            if debug: print("OPTIMAL!")
-            if debug: print(final)
-            return (B,N)
+
+            print("optimal")
+            print(final)
+            
+            
+            return (B,N,out)
 
         # Choose pivot variable:
         # Largest coefficient
@@ -93,18 +100,25 @@ def primal_simplex(A,b,c,B,N):
 
         # Check if delta_x_B <= 0, if it is, then the LP is unbounded.
         if(numpy.all(delta_x_B <= 0)):
-            print("UNBOUNDED LP")
-            return
+            out = "U"
+            print("unbounded")
+            return (B,N,out)
 
         # Calculate the ratio of x_B / delta_x_B
         ratios = numpy.divide(x_B, delta_x_B)
+        ratios = numpy.nan_to_num(ratios, nan=-1)
+
+        if debug: print("Ratios to choose leaving variable: ")
+        if debug: print(ratios)
         
         leaving_index = numpy.where(ratios > 0, ratios, numpy.inf).argmin() # smallest nonzero value
-        
+
         # Check if we only have negative values and zero
         if (numpy.all(ratios <= 0)):
             if(numpy.any(ratios==0)):
-                leaving_index = numpy.asscalar(numpy.argwhere(ratios == 0))
+                leaving_index = (numpy.amin(numpy.argwhere(ratios == 0))).item()
+            else:
+                leaving_index = numpy.amin(numpy.where(ratios == numpy.amin(ratios))).item()
         
 
         leaving_index = B[leaving_index]
@@ -128,6 +142,7 @@ def dual_simplex(A,b,c,B,N):
     if debug: print("Starting DualSimplex")
     iteration = 1
     while True:
+        if debug and iteration == 20: return
         # Compute our required variables based on B and N
         if debug: print("Iteration: ", iteration)
         if debug: print("Current Basis: ", B)
@@ -158,18 +173,14 @@ def dual_simplex(A,b,c,B,N):
 
         z_B = numpy.zeros(len(x_B))
         z_N = numpy.dot(numpy.dot(A_B_i, A_N).transpose(), c_B) - c_N
-        print(z_N)
-
-        if(numpy.all(z_N < 0)):
-            print("NOT DUAL FEASIBLE")
-            return
 
         #Check optimality
         if(numpy.all(x_B >= 0)):
+            out = "O"
             final = numpy.dot(numpy.dot(c_B, A_B_i), b)
-            if debug: print("OPTIMAL!")
-            if debug: print(final)
-            return (B,N)
+            print("optimal")
+            print(final)
+            return (B,N,out)
 
         # Choose leaving pivot variable:
         # For Blands rule: Sort B lowest to highest, then test in order to see if coefficient is right sign
@@ -198,21 +209,33 @@ def dual_simplex(A,b,c,B,N):
         delta_z_N = -numpy.dot(A_N.transpose(), v)
         delta_z_B = numpy.zeros(len(B))
 
-        print("z_N: ", z_N)
-        print("delta_z_N: ", delta_z_N)
+        if debug: print("Current z_N: ")
+        if debug: print(z_N)
+        if debug: print("Current delta_z_N: ")
+        if debug: print(delta_z_N)
 
         # Check if delta_z_B <= 0, if it is, then the LP is unbounded.
         if(numpy.all(delta_z_N <= 0)):
-            print("LP is infeasible")
-            return
-
-        
-        
+            out = "I"
+            print("infeasible")
+            return (B,N,out)
         
 
         # Calculate the ratio of z_N and delta_z_N
         ratios = numpy.divide(z_N, delta_z_N)
-        entering_index = numpy.where(ratios < 0, ratios, numpy.inf).argmin() # smallest nonzero value
+        ratios = numpy.nan_to_num(ratios, nan=-1, posinf=-1, neginf=-1)
+
+        if debug: print("Ratios to choose leaving variable: ")
+        if debug: print(ratios)
+
+        entering_index = numpy.where(ratios > 0, ratios, numpy.inf).argmin() # smallest nonzero value
+
+        # Check if we only have negative values and zero
+        if (numpy.all(ratios <= 0)):
+            if(numpy.any(ratios==0)):
+                entering_index = (numpy.amin(numpy.argwhere(ratios == 0))).item()
+            else:
+                entering_index = numpy.amin(numpy.where(ratios == numpy.amin(ratios))).item()
 
         entering_index = N[entering_index]
         # Updating B and N
@@ -231,15 +254,7 @@ def dual_simplex(A,b,c,B,N):
     return
 
 
-def main():
-    # Read in LP from stdin
-    lp = []
-    for line in sys.stdin:
-        coeff_line = []
-        for coeff in line.split():
-            coeff_line.append(float(coeff))
-        lp.append(coeff_line)
-
+def solve_lp(lp):
     # Convert LP into dictionary matrix form
     (A,b,c,B,N) = standard_form_to_eq(lp)
 
@@ -254,14 +269,30 @@ def main():
     # LP is primal feasible
     if(numpy.all(b >= 0)):
         if debug: print("LP is Primal Feasible")
-        primal_simplex(A,b,c,B,N)
+        (B,N,out) = primal_simplex(A,b,c,B,N)
+        return
     elif(numpy.all(c <= 0)):
         if debug: print("LP is Dual Feasible")
-        dual_simplex(A,b,c,B,N)
+        (B,N,out) = dual_simplex(A,b,c,B,N)
+        return
     else:
         if debug: print("LP is neither Primal nor Dual Feasible")
-        (B,N) = dual_simplex(A,b,numpy.full(len(c), -1),B,N)
-        primal_simplex(A,b,c,B,N)
+        (B,N,out) = dual_simplex(A,b,numpy.full(len(c), -1),B,N)
+        if(out == "I" or out == "U"):
+            return
+        (B,N,out) = primal_simplex(A,b,c,B,N)
+        return
+
+def main():
+    # Read in LP from stdin
+    lp = []
+    for line in sys.stdin:
+        coeff_line = []
+        for coeff in line.split():
+            coeff_line.append(float(coeff))
+        lp.append(coeff_line)
+    solve_lp(lp)
+    return
 
 
 if __name__ == "__main__":
