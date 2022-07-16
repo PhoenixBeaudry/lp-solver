@@ -3,8 +3,9 @@ import numpy
 from fractions import Fraction
 numpy.seterr(divide='ignore', invalid='ignore')
 debug = False
-debug_iterations = 10
-
+debug_iterations = 100000
+iteration = 1
+precision = 14
 
 # Takes in default standard form LP as a list and outputs the same LP as its corresponding A, b, and c vectors
 def standard_form_to_eq(lp):
@@ -23,14 +24,9 @@ def standard_form_to_eq(lp):
     c = numpy.array(c).astype(float)
     return (A,b,c,B,N)
 
-def determine_pivot_index(dictionary):
-    # Largest Coefficient
-    return numpy.argmax(dictionary[0])
-
-
 def primal_simplex(A,b,c,B,N):
+    global iteration
     if debug: print("Starting PrimalSimplex")
-    iteration = 1
     while True:
         if debug and iteration == debug_iterations: return
         # Compute our required variables based on B and N
@@ -49,10 +45,10 @@ def primal_simplex(A,b,c,B,N):
             A_N = numpy.column_stack((A_N, A_column))
         
         # Take its inverse
-        A_B_i = numpy.linalg.inv(A_B)
+        A_B_i = numpy.around(numpy.linalg.inv(A_B), precision)
 
         # Compute value of x
-        x_B = numpy.dot(A_B_i, b)
+        x_B = numpy.around(numpy.dot(A_B_i, b), precision)
         x_N = numpy.zeros(len(N))
 
         #Objective Vectors
@@ -60,7 +56,7 @@ def primal_simplex(A,b,c,B,N):
         c_N = numpy.array(c)[N]
 
         z_B = numpy.zeros(len(x_B))
-        z_N = numpy.dot(numpy.dot(A_B_i, A_N).transpose(), c_B) - c_N
+        z_N = numpy.around(numpy.dot(numpy.dot(A_B_i, A_N).transpose(), c_B) - c_N, precision)
 
         #Check optimality
         if(numpy.all(z_N >= 0)):
@@ -99,7 +95,7 @@ def primal_simplex(A,b,c,B,N):
         
 
         # Choose Leaving Variable 
-        delta_x_B = numpy.dot(A_B_i, A[:, entering_index])
+        delta_x_B = numpy.around(numpy.dot(A_B_i, A[:, entering_index]), precision)
         delta_x_N = numpy.zeros(len(N))
 
         # Check if delta_x_B <= 0, if it is, then the LP is unbounded.
@@ -107,30 +103,30 @@ def primal_simplex(A,b,c,B,N):
             out = ["unbounded"]
             return (B,N,out)
 
-        if debug: print(x_B)
-        if debug: print(delta_x_B)
 
         delta_x_B = numpy.ma.array(delta_x_B, mask=(delta_x_B <= 0))
 
         # Calculate the ratio of x_B / delta_x_B
-        ratios = numpy.divide(x_B, delta_x_B)
-        ratios = numpy.nan_to_num(ratios, nan=numpy.nan, posinf=numpy.nan, neginf=numpy.nan)
+        ratios = numpy.around(numpy.divide(x_B, delta_x_B), precision)
+        ratios = numpy.ma.array(numpy.nan_to_num(ratios, nan=numpy.nan, posinf=numpy.nan, neginf=numpy.nan))
+
         # Mask invalid values
         ratios = numpy.ma.array(ratios, mask=numpy.isnan(ratios))
 
+        if debug: print("Current Basis: ")
+        if debug: print(B)
         if debug: print("Ratios to choose leaving variable: ")
         if debug: print(ratios)
 
         leaving_index = numpy.ma.where(ratios > 0, ratios, numpy.inf).argmin() # smallest nonzero value
 
-
         # TODO this might not be required anymore
         # Check if we only have negative values and zero
-        if (numpy.all(ratios <= 0)):
-            if(numpy.any(ratios==0)):
-                leaving_index = (numpy.amin(numpy.argwhere(ratios == 0))).item()
+        if (numpy.ma.all(ratios <= 0)):
+            if(numpy.ma.any(ratios==0)):
+                leaving_index = (numpy.ma.min(numpy.argwhere(ratios == 0))).item()
             else:
-                leaving_index = numpy.amin(numpy.ma.where(ratios == numpy.amin(ratios))).item()
+                leaving_index = numpy.ma.min(numpy.ma.where(ratios == numpy.ma.min(ratios))).item()
 
 
         leaving_index = B[leaving_index]
@@ -151,8 +147,8 @@ def primal_simplex(A,b,c,B,N):
     return
 
 def dual_simplex(A,b,c,B,N):
+    global iteration
     if debug: print("Starting DualSimplex")
-    iteration = 1
     while True:
         if debug and iteration == debug_iterations: return
         # Compute our required variables based on B and N
@@ -171,10 +167,10 @@ def dual_simplex(A,b,c,B,N):
             A_N = numpy.column_stack((A_N, A_column))
         
         # Take its inverse
-        A_B_i = numpy.linalg.inv(A_B)
+        A_B_i = numpy.around(numpy.linalg.inv(A_B), precision)
 
         # Compute value of x
-        x_B = numpy.dot(A_B_i, b)
+        x_B = numpy.around(numpy.dot(A_B_i, b), precision)
         x_N = numpy.zeros(len(N))
 
         #Objective Vectors
@@ -182,7 +178,7 @@ def dual_simplex(A,b,c,B,N):
         c_N = numpy.array(c)[N]
 
         z_B = numpy.zeros(len(x_B))
-        z_N = numpy.dot(numpy.dot(A_B_i, A_N).transpose(), c_B) - c_N
+        z_N = numpy.around(numpy.dot(numpy.dot(A_B_i, A_N).transpose(), c_B) - c_N, precision)
 
         #Check optimality
         if(numpy.all(x_B >= 0)):
@@ -224,8 +220,8 @@ def dual_simplex(A,b,c,B,N):
             index += 1
 
         # Compute delta_z_N and delta_z_B
-        v = numpy.linalg.solve(A_B.transpose(), u)
-        delta_z_N = -numpy.dot(A_N.transpose(), v)
+        v = numpy.around(numpy.linalg.solve(A_B.transpose(), u), precision)
+        delta_z_N = -numpy.around(numpy.dot(A_N.transpose(), v), precision)
         delta_z_B = numpy.zeros(len(B))
 
         if debug: print("Current z_N: ")
@@ -238,15 +234,15 @@ def dual_simplex(A,b,c,B,N):
             out = ["infeasible"]
             return (B,N,out)
 
-        #delta_z_N = numpy.ma.array(delta_z_N, mask=(delta_z_N < 0))
+
+        delta_z_N = numpy.ma.array(delta_z_N, mask=(delta_z_N <= 0))
+
+        # Calculate the ratio of z_N and delta_z_N and mask invalid values
+        ratios = numpy.around(numpy.divide(z_N, delta_z_N), precision)
+        ratios =  numpy.ma.array(numpy.nan_to_num(ratios, nan=numpy.nan, posinf=numpy.nan, neginf=numpy.nan))
         
-
-        # Calculate the ratio of z_N and delta_z_N
-        ratios = numpy.divide(z_N, delta_z_N)
-        ratios = numpy.nan_to_num(ratios, nan=numpy.nan, posinf=numpy.nan, neginf=numpy.nan)
-        # Mask invalid values
-        ratios = numpy.ma.array(ratios, mask=numpy.isnan(ratios))
-
+        if debug: print("Current Basis: ")
+        if debug: print(B)
         if debug: print("Ratios to choose leaving variable: ")
         if debug: print(ratios)
 
@@ -254,11 +250,12 @@ def dual_simplex(A,b,c,B,N):
 
 
         # Check if we only have negative values and zero
-        if (numpy.all(ratios <= 0)):
-            if(numpy.any(ratios==0)):
-                entering_index = (numpy.amin(numpy.argwhere(ratios == 0))).item()
+        if (numpy.ma.all(ratios <= 0)):
+            if(numpy.ma.any(ratios==0)):
+                entering_index = (numpy.ma.min(numpy.argwhere(ratios == 0))).item()
             else:
-                entering_index = numpy.amin(numpy.ma.where(ratios == numpy.amin(ratios))).item()
+                entering_index = numpy.ma.min(numpy.ma.where(ratios == numpy.ma.min(ratios))).item()
+
 
         entering_index = N[entering_index]
         # Updating B and N
