@@ -73,9 +73,9 @@ def primal_simplex(A,b,c,B,N):
                     value = x_N[N.index(i)]
                 except:
                     value = x_B[B.index(i)]
-                final_variables.append(numpy.around(value, 7))
+                final_variables.append(numpy.format_float_positional(value, precision=8, unique=False, fractional=False, trim='k'))
             
-            final = numpy.around(numpy.dot(numpy.dot(c_B, A_B_i), b), 7)
+            final = numpy.format_float_positional(numpy.dot(numpy.dot(c_B, A_B_i), b), precision=8, unique=False, fractional=False, trim='k')
 
 
             out = ["optimal", final, final_variables]
@@ -188,9 +188,9 @@ def dual_simplex(A,b,c,B,N):
                     value = x_N[N.index(i)]
                 except:
                     value = x_B[B.index(i)]
-                final_variables.append(numpy.around(value, 7))
+                final_variables.append(numpy.format_float_positional(value, precision=8, unique=False, fractional=False, trim='k'))
             
-            final = numpy.around(numpy.dot(numpy.dot(c_B, A_B_i), b), 7)
+            final = numpy.format_float_positional(numpy.dot(numpy.dot(c_B, A_B_i), b), precision=8, unique=False, fractional=False, trim='k')
 
 
             out = ["optimal", final, final_variables]
