@@ -1,8 +1,9 @@
 import sys
 import numpy
 from fractions import Fraction
-numpy.seterr(divide='ignore')
+numpy.seterr(divide='ignore', invalid='ignore')
 debug = False
+debug_iterations = 10
 
 
 # Takes in default standard form LP as a list and outputs the same LP as its corresponding A, b, and c vectors
@@ -15,11 +16,11 @@ def standard_form_to_eq(lp):
     A = numpy.array(A)
     N = [i for i in range(len(lp[0]))]
     B = [i for i in range(len(N),len(N)+len(b))]
-    c = lp[0] + [0]*len(b)
+    c = (lp[0] + [0]*len(b))
     #Add the identity basis (slack variables)
-    A = numpy.concatenate((A,numpy.identity(A.shape[0])), axis=1)
-    b = numpy.array(b)
-    c = numpy.array(c)
+    A = numpy.concatenate((A,numpy.identity(A.shape[0])), axis=1).astype(float)
+    b = numpy.array(b).astype(float)
+    c = numpy.array(c).astype(float)
     return (A,b,c,B,N)
 
 def determine_pivot_index(dictionary):
@@ -31,12 +32,9 @@ def primal_simplex(A,b,c,B,N):
     if debug: print("Starting PrimalSimplex")
     iteration = 1
     while True:
-        if debug and iteration == 20: return
+        if debug and iteration == debug_iterations: return
         # Compute our required variables based on B and N
         if debug: print("Iteration: ", iteration)
-
-        if debug: print("Current Basis: ", B)
-        if debug: print("Current Non Basis: ", N)
 
         # First let's make our basis matrix A_b (columns of A corresponding to our basis variables)
         A_B = A[:, B[0]]
@@ -50,7 +48,7 @@ def primal_simplex(A,b,c,B,N):
             A_column = A[:, non_basis_index]
             A_N = numpy.column_stack((A_N, A_column))
         
-        # Take its inverse (TODO CHANGE LATER TO NOT USE INVERSE)
+        # Take its inverse
         A_B_i = numpy.linalg.inv(A_B)
 
         # Compute value of x
@@ -109,22 +107,31 @@ def primal_simplex(A,b,c,B,N):
             out = ["unbounded"]
             return (B,N,out)
 
+        if debug: print(x_B)
+        if debug: print(delta_x_B)
+
+        delta_x_B = numpy.ma.array(delta_x_B, mask=(delta_x_B <= 0))
+
         # Calculate the ratio of x_B / delta_x_B
         ratios = numpy.divide(x_B, delta_x_B)
-        ratios = numpy.nan_to_num(ratios, nan=-1)
+        ratios = numpy.nan_to_num(ratios, nan=numpy.nan, posinf=numpy.nan, neginf=numpy.nan)
+        # Mask invalid values
+        ratios = numpy.ma.array(ratios, mask=numpy.isnan(ratios))
 
         if debug: print("Ratios to choose leaving variable: ")
         if debug: print(ratios)
-        
-        leaving_index = numpy.where(ratios > 0, ratios, numpy.inf).argmin() # smallest nonzero value
 
+        leaving_index = numpy.ma.where(ratios > 0, ratios, numpy.inf).argmin() # smallest nonzero value
+
+
+        # TODO this might not be required anymore
         # Check if we only have negative values and zero
         if (numpy.all(ratios <= 0)):
             if(numpy.any(ratios==0)):
                 leaving_index = (numpy.amin(numpy.argwhere(ratios == 0))).item()
             else:
-                leaving_index = numpy.amin(numpy.where(ratios == numpy.amin(ratios))).item()
-        
+                leaving_index = numpy.amin(numpy.ma.where(ratios == numpy.amin(ratios))).item()
+
 
         leaving_index = B[leaving_index]
         # Updating B and N
@@ -147,11 +154,9 @@ def dual_simplex(A,b,c,B,N):
     if debug: print("Starting DualSimplex")
     iteration = 1
     while True:
-        if debug and iteration == 20: return
+        if debug and iteration == debug_iterations: return
         # Compute our required variables based on B and N
         if debug: print("Iteration: ", iteration)
-        if debug: print("Current Basis: ", B)
-        if debug: print("Current Non Basis: ", N)
 
         # First let's make our basis matrix A_b (columns of A corresponding to our basis variables)
         A_B = A[:, B[0]]
@@ -165,7 +170,7 @@ def dual_simplex(A,b,c,B,N):
             A_column = A[:, non_basis_index]
             A_N = numpy.column_stack((A_N, A_column))
         
-        # Take its inverse (TODO CHANGE LATER TO NOT USE INVERSE)
+        # Take its inverse
         A_B_i = numpy.linalg.inv(A_B)
 
         # Compute value of x
@@ -232,23 +237,28 @@ def dual_simplex(A,b,c,B,N):
         if(numpy.all(delta_z_N <= 0)):
             out = ["infeasible"]
             return (B,N,out)
+
+        #delta_z_N = numpy.ma.array(delta_z_N, mask=(delta_z_N < 0))
         
 
         # Calculate the ratio of z_N and delta_z_N
         ratios = numpy.divide(z_N, delta_z_N)
-        ratios = numpy.nan_to_num(ratios, nan=-1, posinf=-1, neginf=-1)
+        ratios = numpy.nan_to_num(ratios, nan=numpy.nan, posinf=numpy.nan, neginf=numpy.nan)
+        # Mask invalid values
+        ratios = numpy.ma.array(ratios, mask=numpy.isnan(ratios))
 
         if debug: print("Ratios to choose leaving variable: ")
         if debug: print(ratios)
 
-        entering_index = numpy.where(ratios > 0, ratios, numpy.inf).argmin() # smallest nonzero value
+        entering_index = numpy.ma.where(ratios > 0, ratios, numpy.inf).argmin() # smallest nonzero value
+
 
         # Check if we only have negative values and zero
         if (numpy.all(ratios <= 0)):
             if(numpy.any(ratios==0)):
                 entering_index = (numpy.amin(numpy.argwhere(ratios == 0))).item()
             else:
-                entering_index = numpy.amin(numpy.where(ratios == numpy.amin(ratios))).item()
+                entering_index = numpy.amin(numpy.ma.where(ratios == numpy.amin(ratios))).item()
 
         entering_index = N[entering_index]
         # Updating B and N

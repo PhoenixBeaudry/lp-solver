@@ -45,4 +45,18 @@ for filename in os.listdir(os.getcwd() + testfiles):
             lp.append(coeff_line)
         print("Solving: ", filename)
         lpsolver.solve_lp(lp)
+
+testfiles = "/hardtests"
+for filename in os.listdir(os.getcwd() + testfiles):
+    with open(os.getcwd() + testfiles + "/" + filename) as f:
+        lines = f.readlines()
+        # Read in LP from file
+        lp = []
+        for line in lines:
+            coeff_line = []
+            for coeff in line.split():
+                coeff_line.append(float(coeff))
+            lp.append(coeff_line)
+        print("Solving: ", filename)
+        lpsolver.solve_lp(lp)
     
