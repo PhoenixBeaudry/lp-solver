@@ -66,13 +66,19 @@ def primal_simplex(A,b,c,B,N):
 
         #Check optimality
         if(numpy.all(z_N >= 0)):
-            out = "O"
-            #TODO FORMAT OUTPUT
+            # Find final value of variables 0...n
+            final_variables = []
+            for i in range(0, len(N)):
+                try:
+                    value = x_N[N.index(i)]
+                except:
+                    value = x_B[B.index(i)]
+                final_variables.append(numpy.around(value, 7))
             
-            final = numpy.dot(numpy.dot(c_B, A_B_i), b)
+            final = numpy.around(numpy.dot(numpy.dot(c_B, A_B_i), b), 7)
 
-            print("optimal")
-            print(final)
+
+            out = ["optimal", final, final_variables]
             
             
             return (B,N,out)
@@ -100,8 +106,7 @@ def primal_simplex(A,b,c,B,N):
 
         # Check if delta_x_B <= 0, if it is, then the LP is unbounded.
         if(numpy.all(delta_x_B <= 0)):
-            out = "U"
-            print("unbounded")
+            out = ["unbounded"]
             return (B,N,out)
 
         # Calculate the ratio of x_B / delta_x_B
@@ -176,10 +181,19 @@ def dual_simplex(A,b,c,B,N):
 
         #Check optimality
         if(numpy.all(x_B >= 0)):
-            out = "O"
-            final = numpy.dot(numpy.dot(c_B, A_B_i), b)
-            print("optimal")
-            print(final)
+            # Find final value of variables 0...n
+            final_variables = []
+            for i in range(0, len(N)):
+                try:
+                    value = x_N[N.index(i)]
+                except:
+                    value = x_B[B.index(i)]
+                final_variables.append(numpy.around(value, 7))
+            
+            final = numpy.around(numpy.dot(numpy.dot(c_B, A_B_i), b), 7)
+
+
+            out = ["optimal", final, final_variables]
             return (B,N,out)
 
         # Choose leaving pivot variable:
@@ -216,8 +230,7 @@ def dual_simplex(A,b,c,B,N):
 
         # Check if delta_z_B <= 0, if it is, then the LP is unbounded.
         if(numpy.all(delta_z_N <= 0)):
-            out = "I"
-            print("infeasible")
+            out = ["infeasible"]
             return (B,N,out)
         
 
@@ -270,17 +283,36 @@ def solve_lp(lp):
     if(numpy.all(b >= 0)):
         if debug: print("LP is Primal Feasible")
         (B,N,out) = primal_simplex(A,b,c,B,N)
+        print(out[0])
+        try:
+            print(out[1])
+            print(*out[2])
+        except:
+            return
         return
     elif(numpy.all(c <= 0)):
         if debug: print("LP is Dual Feasible")
         (B,N,out) = dual_simplex(A,b,c,B,N)
+        print(out[0])
+        try:
+            print(out[1])
+            print(*out[2])
+        except:
+            return
         return
     else:
         if debug: print("LP is neither Primal nor Dual Feasible")
         (B,N,out) = dual_simplex(A,b,numpy.full(len(c), -1),B,N)
-        if(out == "I" or out == "U"):
+        if(out[0] == "infeasible" or out[0] == "unbounded"):
+            print(out[0])
             return
         (B,N,out) = primal_simplex(A,b,c,B,N)
+        print(out[0])
+        try:
+            print(out[1])
+            print(*out[2])
+        except:
+            return
         return
 
 def main():
