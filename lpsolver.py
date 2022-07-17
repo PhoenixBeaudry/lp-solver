@@ -1,6 +1,5 @@
 import sys
 import numpy
-from fractions import Fraction
 numpy.seterr(divide='ignore', invalid='ignore')
 debug = False
 debug_iterations = 364
