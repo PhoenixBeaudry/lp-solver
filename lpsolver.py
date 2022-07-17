@@ -2,9 +2,10 @@ import sys
 import numpy
 numpy.seterr(divide='ignore', invalid='ignore')
 debug = False
-debug_iterations = 364
-total_iterations = 1
+debug_iterations = 100000
+total_iterations = 2
 precision = 10
+zero_eps = 1e-4
 
 # Takes in default standard form LP as a list and outputs the same LP as its corresponding A, b, and c vectors
 def standard_form_to_eq(lp):
@@ -50,6 +51,9 @@ def primal_simplex(A,b,c,B,N):
         x_B = numpy.around(numpy.dot(A_B_i, b), precision)
         x_N = numpy.zeros(len(N))
 
+        #If x_B sufficiently small, set to zero
+        x_B[abs(x_B) < zero_eps] = 0.0
+
         
         #Objective Vectors
         c_B = numpy.array(c)[B]
@@ -57,6 +61,9 @@ def primal_simplex(A,b,c,B,N):
 
         z_B = numpy.zeros(len(x_B))
         z_N = numpy.around(numpy.dot(numpy.dot(A_B_i, A_N).transpose(), c_B) - c_N, precision)
+
+        #If z_N sufficiently small, set to zero
+        z_N[abs(z_N) < zero_eps] = 0.0
 
         if debug: print("Current z_N")
         if debug: print(z_N)
@@ -94,6 +101,10 @@ def primal_simplex(A,b,c,B,N):
 
         # Choose Leaving Variable 
         delta_x_B = numpy.around(numpy.dot(A_B_i, A[:, entering_index]), precision)
+
+        #If delta_x_B sufficiently small, set to zero
+        delta_x_B[abs(delta_x_B) < zero_eps] = 0.0
+
         delta_x_N = numpy.zeros(len(N))
 
         # Check if delta_x_B <= 0, if it is, then the LP is unbounded.
@@ -173,6 +184,9 @@ def dual_simplex(A,b,c,B,N):
         z_B = numpy.zeros(len(x_B))
         z_N = numpy.around(numpy.dot(numpy.dot(A_B_i, A_N).transpose(), c_B) - c_N, precision)
 
+        #If z_N sufficiently small, set to zero
+        z_N[abs(z_N) < zero_eps] = 0.0
+
         #Check optimality
         if(numpy.all(x_B >= 0)):
             # Find final value of variables 0...n
@@ -216,6 +230,9 @@ def dual_simplex(A,b,c,B,N):
         v = numpy.around(numpy.linalg.solve(A_B.transpose(), u), precision)
         delta_z_N = -numpy.around(numpy.dot(A_N.transpose(), v), precision)
         delta_z_B = numpy.zeros(len(B))
+
+        #If delta_z_N sufficiently small, set to zero
+        delta_z_N[abs(delta_z_N) < zero_eps] = 0.0
 
         if debug: print("Current z_N: ")
         if debug: print(z_N)
