@@ -1,4 +1,3 @@
-from cgitb import small
 import sys
 import numpy
 numpy.seterr(divide='ignore', invalid='ignore')
@@ -7,7 +6,7 @@ debug_iterations = 10000000
 total_iterations = 2
 precision = 10
 zero_eps = 1e-4
-pivot_rule = "blands"
+pivot_rule = "largecoeff"
 
 # Takes in default standard form LP as a list and outputs the same LP as its corresponding A, b, and c vectors
 def standard_form_to_eq(lp):
