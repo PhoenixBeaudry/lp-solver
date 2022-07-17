@@ -3,9 +3,9 @@ import numpy
 from fractions import Fraction
 numpy.seterr(divide='ignore', invalid='ignore')
 debug = False
-debug_iterations = 100000
+debug_iterations = 4
 iteration = 1
-precision = 14
+precision = 12
 
 # Takes in default standard form LP as a list and outputs the same LP as its corresponding A, b, and c vectors
 def standard_form_to_eq(lp):
@@ -51,12 +51,17 @@ def primal_simplex(A,b,c,B,N):
         x_B = numpy.around(numpy.dot(A_B_i, b), precision)
         x_N = numpy.zeros(len(N))
 
+        
         #Objective Vectors
         c_B = numpy.array(c)[B]
         c_N = numpy.array(c)[N]
 
         z_B = numpy.zeros(len(x_B))
         z_N = numpy.around(numpy.dot(numpy.dot(A_B_i, A_N).transpose(), c_B) - c_N, precision)
+
+        if debug: print("Current z_N")
+        if debug: print(z_N)
+
 
         #Check optimality
         if(numpy.all(z_N >= 0)):
@@ -67,9 +72,9 @@ def primal_simplex(A,b,c,B,N):
                     value = x_N[N.index(i)]
                 except:
                     value = x_B[B.index(i)]
-                final_variables.append(numpy.format_float_positional(value, precision=8, unique=False, fractional=False, trim='k'))
+                final_variables.append(value)
             
-            final = numpy.format_float_positional(numpy.dot(numpy.dot(c_B, A_B_i), b), precision=8, unique=False, fractional=False, trim='k')
+            final = numpy.dot(numpy.dot(c_B, A_B_i), b)
 
 
             out = ["optimal", final, final_variables]
@@ -77,10 +82,9 @@ def primal_simplex(A,b,c,B,N):
             
             return (B,N,out)
 
+
         # Choose pivot variable:
         # Largest coefficient
-        #entering_index = N[numpy.argmin(z_N)]
-        #entering_index = numpy.amin(entering_index)
         
         # For Blands rule: Sort N lowest to highest, then test in order to see if coefficient is right sign
         z_N_index = 0
@@ -92,7 +96,6 @@ def primal_simplex(A,b,c,B,N):
                 break
             z_N_index += 1
         
-        
 
         # Choose Leaving Variable 
         delta_x_B = numpy.around(numpy.dot(A_B_i, A[:, entering_index]), precision)
@@ -103,31 +106,22 @@ def primal_simplex(A,b,c,B,N):
             out = ["unbounded"]
             return (B,N,out)
 
-
+        if debug: print("Current x_B: ")
+        if debug: print(x_B)
+        if debug: print("Current delta_x_B: ")
+        if debug: print(delta_x_B)
+        
         delta_x_B = numpy.ma.array(delta_x_B, mask=(delta_x_B <= 0))
-
         # Calculate the ratio of x_B / delta_x_B
         ratios = numpy.around(numpy.divide(x_B, delta_x_B), precision)
-        ratios = numpy.ma.array(numpy.nan_to_num(ratios, nan=numpy.nan, posinf=numpy.nan, neginf=numpy.nan))
-
-        # Mask invalid values
-        ratios = numpy.ma.array(ratios, mask=numpy.isnan(ratios))
+        ratios =  numpy.ma.array(numpy.nan_to_num(ratios, nan=numpy.nan, posinf=numpy.nan, neginf=numpy.nan))
 
         if debug: print("Current Basis: ")
         if debug: print(B)
         if debug: print("Ratios to choose leaving variable: ")
         if debug: print(ratios)
-
-        leaving_index = numpy.ma.where(ratios > 0, ratios, numpy.inf).argmin() # smallest nonzero value
-
-        # TODO this might not be required anymore
-        # Check if we only have negative values and zero
-        if (numpy.ma.all(ratios <= 0)):
-            if(numpy.ma.any(ratios==0)):
-                leaving_index = (numpy.ma.min(numpy.argwhere(ratios == 0))).item()
-            else:
-                leaving_index = numpy.ma.min(numpy.ma.where(ratios == numpy.ma.min(ratios))).item()
-
+        
+        leaving_index = numpy.ma.argmin(ratios)
 
         leaving_index = B[leaving_index]
         # Updating B and N
@@ -189,9 +183,9 @@ def dual_simplex(A,b,c,B,N):
                     value = x_N[N.index(i)]
                 except:
                     value = x_B[B.index(i)]
-                final_variables.append(numpy.format_float_positional(value, precision=8, unique=False, fractional=False, trim='k'))
+                final_variables.append(value)
             
-            final = numpy.format_float_positional(numpy.dot(numpy.dot(c_B, A_B_i), b), precision=8, unique=False, fractional=False, trim='k')
+            final = numpy.dot(numpy.dot(c_B, A_B_i), b)
 
 
             out = ["optimal", final, final_variables]
@@ -246,16 +240,7 @@ def dual_simplex(A,b,c,B,N):
         if debug: print("Ratios to choose leaving variable: ")
         if debug: print(ratios)
 
-        entering_index = numpy.ma.where(ratios > 0, ratios, numpy.inf).argmin() # smallest nonzero value
-
-
-        # Check if we only have negative values and zero
-        if (numpy.ma.all(ratios <= 0)):
-            if(numpy.ma.any(ratios==0)):
-                entering_index = (numpy.ma.min(numpy.argwhere(ratios == 0))).item()
-            else:
-                entering_index = numpy.ma.min(numpy.ma.where(ratios == numpy.ma.min(ratios))).item()
-
+        entering_index = numpy.ma.argmin(ratios)
 
         entering_index = N[entering_index]
         # Updating B and N
@@ -292,8 +277,9 @@ def solve_lp(lp):
         (B,N,out) = primal_simplex(A,b,c,B,N)
         print(out[0])
         try:
-            print(out[1])
-            print(*out[2])
+            print('{:.7g}'.format(out[1]))
+            output_variables = ' '.join(['{:.7g}'.format(variable) for variable in out[2]])
+            print(output_variables)
         except:
             return
         return
@@ -302,8 +288,9 @@ def solve_lp(lp):
         (B,N,out) = dual_simplex(A,b,c,B,N)
         print(out[0])
         try:
-            print(out[1])
-            print(*out[2])
+            print('{:.7g}'.format(out[1]))
+            output_variables = ' '.join(['{:.7g}'.format(variable) for variable in out[2]])
+            print(output_variables)
         except:
             return
         return
@@ -316,8 +303,9 @@ def solve_lp(lp):
         (B,N,out) = primal_simplex(A,b,c,B,N)
         print(out[0])
         try:
-            print(out[1])
-            print(*out[2])
+            print('{:.7g}'.format(out[1]))
+            output_variables = ' '.join(['{:.7g}'.format(variable) for variable in out[2]])
+            print(output_variables)
         except:
             return
         return
