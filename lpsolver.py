@@ -3,9 +3,9 @@ import numpy
 from fractions import Fraction
 numpy.seterr(divide='ignore', invalid='ignore')
 debug = False
-debug_iterations = 4
-iteration = 1
-precision = 12
+debug_iterations = 364
+total_iterations = 1
+precision = 10
 
 # Takes in default standard form LP as a list and outputs the same LP as its corresponding A, b, and c vectors
 def standard_form_to_eq(lp):
@@ -25,12 +25,12 @@ def standard_form_to_eq(lp):
     return (A,b,c,B,N)
 
 def primal_simplex(A,b,c,B,N):
-    global iteration
+    global total_iterations
     if debug: print("Starting PrimalSimplex")
     while True:
-        if debug and iteration == debug_iterations: return
+        if debug and total_iterations == debug_iterations: return
         # Compute our required variables based on B and N
-        if debug: print("Iteration: ", iteration)
+        if debug: print("Primal Iteration: ", total_iterations)
 
         # First let's make our basis matrix A_b (columns of A corresponding to our basis variables)
         A_B = A[:, B[0]]
@@ -73,13 +73,10 @@ def primal_simplex(A,b,c,B,N):
                 except:
                     value = x_B[B.index(i)]
                 final_variables.append(value)
-            
+            # Find final optimal value
             final = numpy.dot(numpy.dot(c_B, A_B_i), b)
-
-
+            # Output
             out = ["optimal", final, final_variables]
-            
-            
             return (B,N,out)
 
 
@@ -95,7 +92,6 @@ def primal_simplex(A,b,c,B,N):
                 entering_index = index
                 break
             z_N_index += 1
-        
 
         # Choose Leaving Variable 
         delta_x_B = numpy.around(numpy.dot(A_B_i, A[:, entering_index]), precision)
@@ -112,12 +108,16 @@ def primal_simplex(A,b,c,B,N):
         if debug: print(delta_x_B)
         
         delta_x_B = numpy.ma.array(delta_x_B, mask=(delta_x_B <= 0))
+        if debug: print("Current masked delta_x_B: ")
+        if debug: print(delta_x_B)
         # Calculate the ratio of x_B / delta_x_B
         ratios = numpy.around(numpy.divide(x_B, delta_x_B), precision)
         ratios =  numpy.ma.array(numpy.nan_to_num(ratios, nan=numpy.nan, posinf=numpy.nan, neginf=numpy.nan))
 
         if debug: print("Current Basis: ")
         if debug: print(B)
+        if debug: print("Current Non Basis: ")
+        if debug: print(N)
         if debug: print("Ratios to choose leaving variable: ")
         if debug: print(ratios)
         
@@ -136,17 +136,17 @@ def primal_simplex(A,b,c,B,N):
         N.append(leaving_index)
         N.sort()
         
-        iteration += 1
+        total_iterations += 1
 
     return
 
 def dual_simplex(A,b,c,B,N):
-    global iteration
+    global total_iterations
     if debug: print("Starting DualSimplex")
     while True:
-        if debug and iteration == debug_iterations: return
+        if debug and total_iterations == debug_iterations: return
         # Compute our required variables based on B and N
-        if debug: print("Iteration: ", iteration)
+        if debug: print("Dual Iteration: ", total_iterations)
 
         # First let's make our basis matrix A_b (columns of A corresponding to our basis variables)
         A_B = A[:, B[0]]
@@ -228,19 +228,21 @@ def dual_simplex(A,b,c,B,N):
             out = ["infeasible"]
             return (B,N,out)
 
-
         delta_z_N = numpy.ma.array(delta_z_N, mask=(delta_z_N <= 0))
 
         # Calculate the ratio of z_N and delta_z_N and mask invalid values
         ratios = numpy.around(numpy.divide(z_N, delta_z_N), precision)
         ratios =  numpy.ma.array(numpy.nan_to_num(ratios, nan=numpy.nan, posinf=numpy.nan, neginf=numpy.nan))
         
+        if debug: print("Current Non Basis: ")
+        if debug: print(N)
         if debug: print("Current Basis: ")
         if debug: print(B)
-        if debug: print("Ratios to choose leaving variable: ")
+        if debug: print("Ratios to choose entering variable: ")
         if debug: print(ratios)
 
         entering_index = numpy.ma.argmin(ratios)
+        
 
         entering_index = N[entering_index]
         # Updating B and N
@@ -255,7 +257,7 @@ def dual_simplex(A,b,c,B,N):
         N.append(leaving_index)
         N.sort()
         
-        iteration += 1
+        total_iterations += 1
     return
 
 
@@ -285,7 +287,11 @@ def solve_lp(lp):
         return
     elif(numpy.all(c <= 0)):
         if debug: print("LP is Dual Feasible")
-        (B,N,out) = dual_simplex(A,b,c,B,N)
+        if(numpy.all(c == 0)):
+            # Weird degenerate 0 case run with -1
+            (B,N,out) = dual_simplex(A,b,numpy.full(len(c), -1),B,N)
+        else:
+            (B,N,out) = dual_simplex(A,b,c,B,N)
         print(out[0])
         try:
             print('{:.7g}'.format(out[1]))
