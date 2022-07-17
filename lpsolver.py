@@ -1,11 +1,13 @@
+from cgitb import small
 import sys
 import numpy
 numpy.seterr(divide='ignore', invalid='ignore')
-debug = False
-debug_iterations = 100000
+debug = True
+debug_iterations = 10000000
 total_iterations = 2
 precision = 10
 zero_eps = 1e-4
+pivot_rule = "blands"
 
 # Takes in default standard form LP as a list and outputs the same LP as its corresponding A, b, and c vectors
 def standard_form_to_eq(lp):
@@ -90,14 +92,21 @@ def primal_simplex(A,b,c,B,N):
         # Largest coefficient
         
         # For Blands rule: Sort N lowest to highest, then test in order to see if coefficient is right sign
-        z_N_index = 0
-        entering_index = 0
-        for index in N:
-            entering_coefficient = z_N[z_N_index]
-            if (entering_coefficient < 0):
-                entering_index = index
-                break
-            z_N_index += 1
+        
+        if(pivot_rule == "blands"):
+            z_N_index = 0
+            entering_index = 0
+            for index in N:
+                entering_coefficient = z_N[z_N_index]
+                if (entering_coefficient < 0):
+                    entering_index = index
+                    break
+                z_N_index += 1
+        elif(pivot_rule == "largecoeff"):
+            smallest_coefficients = numpy.argmin(z_N)
+            entering_index = N[numpy.amin(smallest_coefficients)]
+
+
 
         # Choose Leaving Variable 
         delta_x_B = numpy.around(numpy.dot(A_B_i, A[:, entering_index]), precision)
@@ -206,14 +215,18 @@ def dual_simplex(A,b,c,B,N):
 
         # Choose leaving pivot variable:
         # For Blands rule: Sort B lowest to highest, then test in order to see if coefficient is right sign
-        x_B_index = 0
-        leaving_index = 0
-        for index in B:
-            leaving_coefficient = x_B[x_B_index]
-            if (leaving_coefficient < 0):
-                leaving_index = index
-                break
-            x_B_index += 1
+        if(pivot_rule == "blands"):
+            x_B_index = 0
+            leaving_index = 0
+            for index in B:
+                leaving_coefficient = x_B[x_B_index]
+                if (leaving_coefficient < 0):
+                    leaving_index = index
+                    break
+                x_B_index += 1
+        elif(pivot_rule == "largecoeff"):
+            smallest_coefficients = numpy.argmin(x_B)
+            leaving_index = B[numpy.amin(smallest_coefficients)]
 
         # Choose Entering Variable
         # Find U vector
