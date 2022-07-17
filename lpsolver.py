@@ -2,7 +2,7 @@ from cgitb import small
 import sys
 import numpy
 numpy.seterr(divide='ignore', invalid='ignore')
-debug = True
+debug = False
 debug_iterations = 10000000
 total_iterations = 2
 precision = 10
