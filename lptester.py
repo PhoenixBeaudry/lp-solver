@@ -16,7 +16,14 @@ for filename in os.listdir(os.getcwd() + testfiles):
                 coeff_line.append(float(coeff))
             lp.append(coeff_line)
         print("Solving: ", filename)
-        lpsolver.solve_lp(lp)
+        output = lpsolver.solve_lp(lp)
+
+        print("Actual Output: ")
+        # Open output file
+        with open(os.getcwd() + "/test_output/" + filename) as output_f:
+            #Now compare output
+            text = output_f.read()
+            print(text)
 
 testfiles = "/tests/" + tests[1]
 for filename in os.listdir(os.getcwd() + testfiles):
@@ -31,6 +38,13 @@ for filename in os.listdir(os.getcwd() + testfiles):
             lp.append(coeff_line)
         print("Solving: ", filename)
         lpsolver.solve_lp(lp)
+        print("Actual Output: ")
+        # Open output file
+        with open(os.getcwd() + "/test_output" + "/" + filename) as output_f:
+            #Now compare output
+            text = output_f.read()
+            print(text)
+
 
 testfiles = "/tests/" + tests[2]
 for filename in os.listdir(os.getcwd() + testfiles):
@@ -45,8 +59,14 @@ for filename in os.listdir(os.getcwd() + testfiles):
             lp.append(coeff_line)
         print("Solving: ", filename)
         lpsolver.solve_lp(lp)
+        print("Actual Output: ")
+        # Open output file
+        with open(os.getcwd() + "/test_output" + "/" + filename) as output_f:
+            #Now compare output
+            text = output_f.read()
+            print(text)
 
-testfiles = "/hardtests"
+testfiles = "/tests/hardtests"
 for filename in os.listdir(os.getcwd() + testfiles):
     with open(os.getcwd() + testfiles + "/" + filename) as f:
         lines = f.readlines()
@@ -59,4 +79,10 @@ for filename in os.listdir(os.getcwd() + testfiles):
             lp.append(coeff_line)
         print("Solving: ", filename)
         lpsolver.solve_lp(lp)
+        print("Actual Output: ")
+        # Open output file
+        with open(os.getcwd() + "/test_output" + "/" + filename) as output_f:
+            #Now compare output
+            text = output_f.read()
+            print(text)
     
